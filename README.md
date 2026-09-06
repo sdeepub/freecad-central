@@ -33,7 +33,7 @@ chmod +x config/cad-app/entrypoint-init.sh
 sudo chmod -R 777 $(docker inspect --format '{{ .Mountpoint }}' project-folder_cad_drawings 2>/dev/null || echo "/var/lib/docker/volumes/project-folder_cad_drawings/_data")
 
 ```
-Use code with caution.
+<sub>*Use code with caution.*</sub>
 
 ### 3. Spin Up the Infrastructure Stack
 
@@ -44,7 +44,7 @@ Launch all services in detached background mode using a single command: 
 docker compose up -d
 
 ```
-Use code with caution.
+<sub>*Use code with caution.*</sub>
 
 ### 4. Verify System Initialization
 
@@ -55,7 +55,7 @@ Check that all containers are up and running healthily: 
 docker compose ps
 
 ```
-Use code with caution.
+<sub>*Use code with caution.*</sub>
 
 ### 🌐 Portal Reference Guide
 
@@ -94,7 +94,7 @@ To stop the background container runtimes without destroying your persistent dat
 docker compose down
 
 ```
-Use code with caution.
+<sub>*Use code with caution.*</sub>
 
 To perform a complete hard reset, wiping the container caches while safely retaining your design volume blocks, use: 
 
@@ -103,4 +103,4 @@ To perform a complete hard reset, wiping the container caches while safely retai
 docker compose down --remove-orphans && docker compose up -d --force-recreate
 
 ```
-Use code with caution.
+<sub>*Use code with caution.*</sub>
