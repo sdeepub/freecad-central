@@ -1,0 +1,124 @@
+networks:
+  cad-net:
+    driver: bridge
+
+volumes:
+  guadmin-data:
+  odoo-db-data:
+  odoo-web-data:
+  snipe-db-data:
+  cad_drawings:
+
+services:
+  # ----------------------------------------------------
+  # LAYER 1: GATEWAY (Apache Guacamole)
+  # ----------------------------------------------------
+  guacamole:
+    image: jwetzell/guacamole:latest
+    container_name: cad-gateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - guadmin-data:/config
+    networks:
+      - cad-net
+    restart: unless-stopped
+
+  # ----------------------------------------------------
+  # LAYER 2: THE MOCKUP APP (Linux Native CAD via VNC)
+  # ----------------------------------------------------
+  cad-app:
+    image: accetto/ubuntu-vnc-xfce-freecad-g3:latest
+    container_name: cad-mockup-app
+    user: root
+    shm_size: "2gb"
+    ports:
+      - "5901:5901" # VNC port used by Apache Guacamole
+    environment:
+      - VNC_PW=cadpass
+      - VNC_RESOLUTION=1280x800
+    volumes:
+      - cad_drawings:/home/headless/Documents
+      - ./config/cad-app/entrypoint-init.sh:/entrypoint-init.sh:ro
+    entrypoint: ["/entrypoint-init.sh"]
+    networks:
+      - cad-net
+    restart: unless-stopped
+
+  # ----------------------------------------------------
+  # LAYER 3: AUTOMATION ENGINE (Node-RED)
+  # ----------------------------------------------------
+  node-red:
+    image: nodered/node-red:latest
+    container_name: cad-approval-engine
+    ports:
+      - "1880:1880"
+    volumes:
+      - cad_drawings:/data/watch_folder
+    networks:
+      - cad-net
+    restart: unless-stopped
+
+  # ----------------------------------------------------
+  # LAYER 4: DATA MANAGEMENT (Odoo Community Edition)
+  # ----------------------------------------------------
+  odoo-db:
+    image: postgres:15
+    container_name: cad-odoo-db
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=odoo_secure_pass
+      - POSTGRES_USER=odoo
+    volumes:
+      - odoo-db-data:/var/lib/postgresql/data
+    networks:
+      - cad-net
+    restart: unless-stopped
+
+  odoo-app:
+    image: odoo:17.0
+    container_name: cad-pdm-hub
+    depends_on:
+      - odoo-db
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo-web-data:/var/lib/odoo
+    networks:
+      - cad-net
+    restart: unless-stopped
+
+  # ----------------------------------------------------
+  # LAYER 4 (CONT.): ASSET MANAGEMENT (Snipe-IT)
+  # ----------------------------------------------------
+  snipe-db:
+    image: mariadb:10.5
+    container_name: cad-snipe-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=snipe_root_pass
+      - MYSQL_DATABASE=snipeit
+      - MYSQL_USER=snipeit
+      - MYSQL_PASSWORD=snipe_user_pass
+    volumes:
+      - snipe-db-data:/var/lib/mysql
+    networks:
+      - cad-net
+    restart: unless-stopped
+
+  snipe-it:
+    image: snipe/snipe-it:latest
+    container_name: cad-itam-hub
+    depends_on:
+      - snipe-db
+    ports:
+      - "8888:80"
+    environment:
+      - APP_URL=http://localhost:8888
+      - APP_KEY=base64:J3UYSJ1tgA2jE0zZzRB4gZ8GE1aZhN6VB2SkFkwdL2Y=
+      - MYSQL_DATABASE=snipeit
+      - MYSQL_USER=snipeit
+      - MYSQL_PASSWORD=snipe_user_pass
+      - DB_PORT=3306
+    networks:
+      - cad-net
+    restart: unless-stopped
